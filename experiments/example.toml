@@ -1,0 +1,18 @@
+# Minimal experiment: original vs. round trip for one model, chat only.
+# Smoke run: uv run --env-file .env python -m repro.run experiments/example.toml --limit 1
+# Full run:  uv run --env-file .env python -m repro.run experiments/example.toml   (resumable)
+# To add essays: put "essay" in settings, uncomment persuade (and set human_baseline = true for the
+# student-essay baseline), then rerun; finished stages are skipped, so only the essays are collected.
+name = "example"                        # outputs -> runs/example/
+models = ["anthropic/claude-opus-5"]
+settings = ["chat"]
+# persuade = "persuade_2.0.csv"         # PERSUADE 2.0 CSV: essay assignments (needed only for "essay")
+human_baseline = false                  # no student essays: orig vs. rt only
+# limit = 1                             # units per model and setting, for a smoke run
+
+[roundtrip]
+translator = "tencent/hy-mt2-30b-a3b"   # OpenRouter; "facebook/nllb-200-3.3B" runs NLLB locally as in the paper
+
+[analyze]
+spacy = "en_core_web_trf"
+judge = true

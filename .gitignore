@@ -5,7 +5,8 @@ results/
 .env
 runs/
 /analysis/
-experiments/
+experiments/*
+!experiments/example.toml
 materials/translation_model/
 materials/code_refactor/
 article/

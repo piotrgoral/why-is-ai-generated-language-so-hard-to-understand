@@ -6,61 +6,68 @@
 > any errors here are ours. See [Deviations from the paper](#deviations-from-the-paper) and [Citation](#citation).
 
 Chat + essay settings of Experiment 1 (`materials/paper/2610.29162v1.md`): collect model text via OpenRouter,
-paraphrase it by round-trip translation (EN→JA→EN; HY-MT2-30B-A3B via OpenRouter by default, NLLB-200 as in the paper on request), measure the difficulty-linked features with spaCy,
+paraphrase it by round-trip translation (EN→JA→EN), measure the difficulty-linked features with spaCy,
 and test original vs. round trip per model.
+
+## Setup
 
 ```sh
 uv sync
-cp .env.example .env   # fill in OPENROUTER_API_KEY and JEV_API_KEY, then `export $(cat .env)` or use `uv run --env-file .env ...`
-
-# 1. collect (resumable; --limit 1 for a smoke test)
-uv run python -m repro.collect --setting chat  --models openai/gpt-5.6-luna --limit 1
-uv run python -m repro.collect --setting essay --persuade persuade_2.0.csv
-
-# 2. sentences + round trip (+ student essays as the human baseline)
-uv run --env-file .env python -m repro.roundtrip --persuade persuade_2.0.csv   # tencent/hy-mt2-30b-a3b; --translator facebook/nllb-200-3.3B runs NLLB locally as in the paper
-
-# 3. features, Jev classifier, bootstrap CIs, paired jackknife tests -> results/features.csv, results/diff.csv
-#    chat n-grams are scored against OpenSubtitles: download OPUS OpenSubtitles v2018 mono English
-#    (https://object.pouta.csc.fi/OPUS-OpenSubtitles/v2018/mono/en.txt.gz, 3.6 GB) to data/opensubtitles/en.txt.gz
-uv run python -m repro.analyze                                  # --spacy en_core_web_sm --no-judge for a fast pass
+cp .env.example .env   # fill in OPENROUTER_API_KEY and JEV_API_KEY
 ```
 
-PERSUADE 2.0 CSV: `persuade_2.0_human_scores_demo_id_github.csv` from the PERSUADE corpus release.
+Run commands with `uv run --env-file .env ...`. Data needed:
 
-## Experiments
+- **PERSUADE 2.0** (essays only): `persuade_2.0_human_scores_demo_id_github.csv` from the PERSUADE corpus release, passed as `--persuade persuade_2.0.csv`.
+- **OpenSubtitles** (chat n-grams): [OPUS OpenSubtitles v2018 mono English](https://object.pouta.csc.fi/OPUS-OpenSubtitles/v2018/mono/en.txt.gz) (3.6 GB) at `data/opensubtitles/en.txt.gz`.
 
-The commands above run the default experiment (all models, `data/raw.jsonl` → `data/sentences.jsonl` → `results/`).
-A config in `experiments/*.toml` picks models, settings and stage options and keeps its outputs in `runs/<name>/`
-(`raw.jsonl`, `sentences.jsonl`, `results/`). Reference samples and the spaCy/Jev caches in `data/` are shared.
+## Quick start
 
 ```sh
-uv run --env-file .env python -m repro.run experiments/opus-roundtrip.toml --limit 1   # smoke run
-uv run --env-file .env python -m repro.run experiments/opus-roundtrip.toml             # full run (resumable)
-uv run --env-file .env python -m repro.run experiments/opus-roundtrip.toml --stages analyze
+# 1. collect model text (resumable; --limit 1 for a smoke test)
+uv run --env-file .env python -m repro.collect --setting chat --models openai/gpt-5.6-luna --limit 1
+uv run --env-file .env python -m repro.collect --setting essay --persuade persuade_2.0.csv
+
+# 2. split sentences and round-trip them (+ student essays as the human baseline)
+uv run --env-file .env python -m repro.roundtrip --persuade persuade_2.0.csv
+
+# 3. features, Jev classifier, bootstrap CIs, paired jackknife tests -> results/features.csv, results/diff.csv
+uv run --env-file .env python -m repro.analyze   # --spacy en_core_web_sm --no-judge for a fast pass
 ```
+
+The round trip uses HY-MT2-30B-A3B via OpenRouter by default; pass `--translator facebook/nllb-200-3.3B` to run NLLB-200 locally as in the paper.
+
+## Experiment configs
+
+The commands above run the default experiment (all models, `data/raw.jsonl` → `data/sentences.jsonl` → `results/`).
+A config in `experiments/<name>.toml` picks models, settings and stage options and keeps its outputs in
+`runs/<name>/` (`raw.jsonl`, `sentences.jsonl`, `results/`). Reference samples and the spaCy/Jev caches in `data/` are shared.
+`experiments/` (except `example.toml`) and `runs/` are gitignored, so local configs stay local; copy `experiments/example.toml` to start.
+
+```sh
+uv run --env-file .env python -m repro.run experiments/example.toml --limit 1          # smoke run
+uv run --env-file .env python -m repro.run experiments/example.toml                    # full run (resumable)
+uv run --env-file .env python -m repro.run experiments/example.toml --stages analyze   # one stage only
+```
+
+`repro.run` also takes `--translator`, `--spacy` and `--no-judge` overrides; each stage module accepts `--config` too.
 
 To re-translate conversations an experiment already collected, give a new config the same models and settings,
 `raw = "runs/<other>/raw.jsonl"` and a different `[roundtrip] translator`; it collects nothing and writes its own
 `runs/<name>/sentences.jsonl` and `results/`.
 
-### NLLB-200 3.3B on Modal
-`modal_nllb.py` serves NLLB (the same `NLLBTranslator` code, fp16 on the first free of L4 / A10G / L40S, up to 10 autoscaled containers (the workspace GPU limit), weights
-cached in the `nllb-hf-cache` volume). Translator `modal:facebook/nllb-200-3.3B` sends length-sorted 64-sentence chunks
-to it in parallel; several experiments can run at once against the same deployment.
-`experiments/*-roundtrip-nllb.toml` re-translate each run's conversations with it (`raw` points at the original run).
+### Optional: NLLB-200 3.3B on Modal
+
+`modal_nllb.py` serves NLLB (the same `NLLBTranslator` code, fp16 on the first free of L4 / A10G / L40S, up to 10 autoscaled
+containers, weights cached in the `nllb-hf-cache` volume). Translator `modal:facebook/nllb-200-3.3B` sends length-sorted
+64-sentence chunks to it in parallel; several experiments can run at once against the same deployment.
 
 ```sh
 modal deploy modal_nllb.py          # once (and after changing NLLBTranslator); `modal run modal_nllb.py` for a smoke test
-uv run --env-file .env python -m repro.run experiments/opus-roundtrip-nllb.toml --stages roundtrip analyze
+uv run --env-file .env python -m repro.run experiments/<name>.toml --stages roundtrip analyze   # with translator = "modal:facebook/nllb-200-3.3B"
 ```
 
-`repro.run` also takes `--translator`, `--spacy` and `--no-judge` overrides; each stage module accepts `--config` too.
-`experiments/opus-roundtrip.toml`: Opus 5, Opus 5.5 and Opus 4.5, chat only for now, original vs. round trip only
-(`human_baseline = false`). Essays can be added later; see the comments in the file.
-`experiments/sonnet-roundtrip.toml` and `experiments/haiku-roundtrip.toml`: the same design for Sonnet 4.5 / 5 / 5.5 and Haiku 4.5 / 5.5.
-`experiments/openai-roundtrip.toml`: the same for GPT-3.5 Turbo (16k) and GPT-4.1 / 4.1 mini / 4.1 nano.
-`experiments/gpt4o-roundtrip.toml`: the same for GPT-4o (`openai/gpt-4o` alias, 2024-08-06, 2024-11-20).
+## Code layout
 
 | file | role |
 |---|---|
