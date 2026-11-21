@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "This is an unofficial reproduction. If you use it, please cite the original paper (preferred-citation below)."
+title: 'Minimal reproduction of "Why is AI-generated language so hard to understand?" (Exp. 1)'
+type: software
+authors:
+  - given-names: Piotr
+preferred-citation:
+  type: article
+  title: "Why is AI-generated language so hard to understand?"
+  authors:
+    - given-names: Thomas Hikaru
+      family-names: Clark
+    - given-names: Matias B.
+      family-names: Martin
+    - given-names: Kyle
+      family-names: Mahowald
+  year: 2026
+  month: 10
+  doi: 10.48550/arXiv.2610.29162
+  url: "https://arxiv.org/abs/2610.29162"
+  identifiers:
+    - type: other
+      value: "arXiv:2610.29162"
+      description: arXiv identifier

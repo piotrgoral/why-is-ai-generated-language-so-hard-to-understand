@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+data/
+results/
+.env
+runs/
+/analysis/
+experiments/
+materials/translation_model/
+materials/code_refactor/
+article/

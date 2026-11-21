@@ -1,0 +1,54 @@
+[project]
+name = "repro"
+version = "0.1.0"
+description = "Minimal reproduction of Exp. 1 of 'Why is AI-generated language so hard to understand?'"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "openai>=1.60",
+    "spacy>=3.8,<3.9",
+    "spacy-curated-transformers>=0.3",
+    "en-core-web-trf",
+    "en-core-web-sm",
+    "transformers>=4.45",
+    "sentencepiece",
+    "torch",
+    "datasets",
+    "pandas",
+    "numpy",
+    "scipy",
+    "syntok>=1.4.4",
+    "modal>=1.6.4",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+en-core-web-trf = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl" }
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["."]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "N", "ANN", "TID"]
+ignore = ["E501", "ANN401", "B905"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]
+"modal_nllb.py" = ["ANN"]
