@@ -26,6 +26,8 @@ BIN_WIDTH = 5
 MAX_SENTENCE_WORDS = 30
 RELATIVIZERS = {"that", "which", "who", "whom"}
 NON_OBJECT_RELATIVIZERS = {"where", "when", "why", "how", "whose"}
+# nouns whose relative clause modifies the event, not an object: "the way you talk", "the time I left"
+ADVERBIAL_HEADS = {"way", "time", "reason", "place", "day", "moment", "year", "week", "point"}
 ANIMATE_PRONOUNS = {
     "i",
     "you",
@@ -70,7 +72,8 @@ def dep_length(doc: Doc) -> tuple[int | None, int, int]:
 
 def object_relatives(doc: Doc) -> tuple[int, int]:
     """(bare, overt) relative clauses whose verb has its own (non-relativizer) subject
-    and no other direct object."""
+    and no other direct object; adverbial ("the way you talk") and pied-piped
+    ("the house in which he lives") relatives are not object relatives."""
     bare = overt = 0
     for token in doc:
         if token.dep_ != "relcl":
@@ -80,6 +83,12 @@ def object_relatives(doc: Doc) -> tuple[int, int]:
             k for k in children if k.lower_ in RELATIVIZERS or k.tag_ in ("WDT", "WP")
         ]
         if any(k.lower_ in NON_OBJECT_RELATIVIZERS for k in children):
+            continue
+        if token.head.lower_ in ADVERBIAL_HEADS or any(
+            k.dep_ == "prep"
+            and any(g.lower_ in RELATIVIZERS or g.tag_ in ("WDT", "WP") for g in k.children)
+            for k in children
+        ):
             continue
         has_own_subject = any(
             k.dep_ == "nsubj" and k not in relativizers for k in children

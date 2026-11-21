@@ -11,6 +11,9 @@ MAX_STUDENT_HEADER_LINES = 4  # title/name/date lines before a student essay
 MAX_HEADER_LINE_WORDS = 5  # a header line has fewer than 6 words
 HORIZONTAL_RULE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$", flags=re.M)
 LIST_MARKER = re.compile(r"^(?:>\s*)*(?:[-*+]|\d+[.)])\s+")
+# $...$ math: no space inside the dollar signs and no word character or digit outside them, so
+# currency ("between $500 and $1,000") is not mistaken for math
+INLINE_MATH = r"(?<![\w$])\$(?=\S)[^$\n]+?(?<=\S)\$(?![\w$])"
 NOT_SENTENCES = ("#", "|")  # headings and table rows
 
 
@@ -20,7 +23,7 @@ def _strip_markup(text: str) -> str:
     text = re.sub(r"```.*?```", "\n", text, flags=re.S)
     text = re.sub(r"!\[[^\]]*\]\([^)]*\)|<[^>]+>", " ", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
-    text = re.sub(r"`[^`\n]+`|https?://\S+|\$[^$\n]+\$", PLACEHOLDER, text)
+    text = re.sub(f"`[^`\\n]+`|https?://\\S+|{INLINE_MATH}", PLACEHOLDER, text)
     text = re.sub(r"(\*\*|__|\*)(?=\S)(.+?)(?<=\S)\1", r"\2", text)
     text = re.sub(r"(?<!\w)_(?=\S)(.+?)(?<=\S)_(?!\w)", r"\1", text)
     return re.sub(r"[→←↔⇒➜]|[\U0001F000-\U0001FAFF☀-➿]", "\n", text)

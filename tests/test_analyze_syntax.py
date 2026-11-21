@@ -187,3 +187,22 @@ def test_run_jev_caches_and_calls_classifier(monkeypatch):
         len([json.loads(line) for line in judge.JUDGE_CACHE.read_text().splitlines()])
         == 3
     )
+
+
+def test_object_relatives_ignores_adverbial_and_pied_piped():
+    # the way she talks
+    d = doc(
+        ["the", "way", "she", "talks"],
+        [1, 1, 3, 1],
+        ["det", "ROOT", "nsubj", "relcl"],
+        tags=["DT", "NN", "PRP", "VBZ"],
+    )
+    assert syntax.object_relatives(d) == (0, 0)
+    # the house in which she lives
+    d = doc(
+        ["the", "house", "in", "which", "she", "lives"],
+        [1, 1, 5, 2, 5, 1],
+        ["det", "ROOT", "prep", "pobj", "nsubj", "relcl"],
+        tags=["DT", "NN", "IN", "WDT", "PRP", "VBZ"],
+    )
+    assert syntax.object_relatives(d) == (0, 0)

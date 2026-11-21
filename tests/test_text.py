@@ -34,3 +34,8 @@ def test_sentences_split():
         "How are you?",
         "Fine.",
     ]
+
+
+def test_clean_keeps_currency_masks_math():
+    assert text.clean("Rent is between $500 and $1,000.") == ["Rent is between $500 and $1,000."]
+    assert text.clean("Let $x$ be small.") == ["Let Xyz be small."]
